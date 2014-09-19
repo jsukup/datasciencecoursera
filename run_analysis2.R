@@ -50,4 +50,6 @@ x <- cbind(trsub, tract, xtrain) # Combine all three training files
 y <- cbind(tesub, teact, xtest) # Combine all three test files
 names(x)[1:2] <- c("subject", "activity") # Change first two column names to "subject" and "activity"
 names(y)[1:2] <- c("subject", "activity") # Change first two column names to "subject" and "activity"
-xy <- rbind(x,y)
+xy <- rbind(x,y) # Final merge of test/train data and labels
+
+# 
