@@ -5,6 +5,8 @@
 # Set working directory on local machine
 setwd("C://Program Files (x86)/R Statistics/Work/UCI HAR Dataset")
 
+# Load plyr
+library(plyr)
 
 # Read in variable label files
 varnames <- read.table("features.txt", sep = "") # Call "features.txt" for variable labels
