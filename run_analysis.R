@@ -1,14 +1,15 @@
 ## Getting and Cleaning Data - Course Project
-
 ## Objective: Merging "Human Activity Recognition Using Smartphones Dataset" test/training data
 ## and obtaining average mean/standard deviation for each measurement
 
 # Set working directory on local machine
 setwd("C://Program Files (x86)/R Statistics/Work/UCI HAR Dataset")
 
+
 # Read in variable label files
 varnames <- read.table("features.txt", sep = "") # Call "features.txt" for variable labels
-varnames <- as.character(varnames$V2)) # Convert factor variable "V2" to character vector "varnames"
+varnames <- as.character(varnames$V2) # Convert factor variable "V2" to character vector "varnames"
+
 
 # Clean variable labels
 clean <- function(x){
@@ -21,8 +22,8 @@ clean <- function(x){
     varnames <- gsub("-", " ", varnames)
     varnames
 }
-
 varnames <- clean(varnames)
+
 
 # Read in subject and activity labels
 tract <- read.table("y_train.txt") # Call "y_train.txt" for activity labels
@@ -39,6 +40,7 @@ teact <- factor(teact, 1:6, labels=c("Walking", "Walking Upstairs", "Walking Dow
 tesub <- read.table("subject_test.txt") # Call "subject_test.txt" for subject labels
 tesub <- tesub$V1 # Convert variable "V1" to vector
 
+
 # Read in data and combine tables
 xtrain <- read.table("x_train.txt") # Call "x_train.txt" for test data
 xtest<- read.table("x_test.txt") # Call "x_train.txt" for test data
@@ -48,8 +50,13 @@ names(xtest) <- varnames # Apply variable names
 
 x <- cbind(trsub, tract, xtrain) # Combine all three training files
 y <- cbind(tesub, teact, xtest) # Combine all three test files
+
 names(x)[1:2] <- c("subject", "activity") # Change first two column names to "subject" and "activity"
 names(y)[1:2] <- c("subject", "activity") # Change first two column names to "subject" and "activity"
+
 xy <- rbind(x,y) # Final merge of test/train data and labels
 
-# 
+# Create final data set
+step5 <- xy[,grep("subject|activity| mean | std ", colnames(xy))] # Extract only mean and standard deviations
+final <- ddply(step5, .(subject,activity), .fun = numcolwise(mean)) # Calculate average mean/standard deviation by subject and activity
+final <- write.table(final, file="GCD_Final2.txt", row.names = FALSE, sep = " ") # Write final table with <space> seperator
