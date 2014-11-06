@@ -1,0 +1,14 @@
+corr <- function(directory, threshold = 0){
+        files <- list.files(directory,full.names=T)
+        id=1:332
+        cor_vec <- c()
+        for(i in id){
+                dat <- rbind(read.csv(files[i]))
+                nobs <- complete.cases(dat)
+                if(sum(nobs)>threshold){
+                        data1 <- cor(dat$sulfate,dat$nitrate,use="complete.obs")
+                        cor_vec <- c(cor_vec,data1)
+                }
+        }
+        cor_vec
+}
