@@ -1,0 +1,23 @@
+best <- function(state, outcome) {
+    
+    data <- read.csv("HW4/outcome-of-care-measures.csv", colClasses = "character")
+    datasub=data[c(2,7,11,17,23)]    
+    datasub[[3]]=as.numeric( datasub[[3]] )
+    datasub[[4]]=as.numeric( datasub[[4]] )
+    datasub[[5]]=as.numeric( datasub[[5]] )
+    
+    
+    if(! state %in% data$State) stop( "invalid state" )
+    outcomeRange=c("heart attack", "heart failure","pneumonia")
+    if(! outcome %in% outcomeRange) stop( "invalid outcome" )
+    
+    
+    names(datasub)=c("Hospital","state","heart attack",
+                     "heart failure","pneumonia")
+    datasub=split(datasub,datasub$state)
+    datamin=datasub[[state]][ ,c("Hospital",outcome)]
+    
+    require(plyr); dataorder=arrange( datamin, datamin[2], datamin[1] )
+    
+    return( dataorder[1,1] )    
+}
