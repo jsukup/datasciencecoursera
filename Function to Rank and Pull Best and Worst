@@ -1,0 +1,41 @@
+rankall <- function(outcome, num = "best") {
+    data <- read.csv("HW4/outcome-of-care-measures.csv", colClasses = "character")
+    datasub <- data[c(2,7,11,17,23)]    
+    datasub[[3]] <- as.numeric( datasub[[3]] )
+    datasub[[4]] <- as.numeric( datasub[[4]] )
+    datasub[[5]] <- as.numeric( datasub[[5]] )
+    
+    outcomeRange=c("heart attack", "heart failure","pneumonia")
+    if(! outcome %in% outcomeRange) stop( "invalid outcome" )
+    
+    names(datasub) <- c("hospital","state","heart attack","heart failure","pneumonia")
+    datasub <- split(datasub,datasub$state)
+    final <- data.frame(hospital=character(),state=character())
+    #datamin <- datasub[[state]][ ,c("Hospital",outcome)]
+
+    if(num=="best"){
+        sort <- lapply(datasub, function(x) x[order(x[,outcome],x[,"hospital"]),])
+        result <- lapply(sort, function(x) d <- x[1,c(1,2)])
+        final <-  do.call(rbind.data.frame,result)
+        return(final)
+    }
+
+    if(num=="worst"){
+        sort <- lapply(datasub, function(x) x[order(-x[,outcome],x[,"hospital"]),])
+        result <- lapply(sort, function(x) d <- x[1,c(1,2)])
+        final <-  do.call(rbind.data.frame,result)
+        return(final)
+    }
+    
+    if(is.numeric(num)){
+        sort <- lapply(datasub, function(x) x[order(x[,outcome],x[,"hospital"]),])
+        result <- lapply(sort, function(x) d <- x[num,c(1,2)])
+        final <-  do.call(rbind.data.frame,result)
+        return(final)
+    }
+}
+
+    
+
+    
+  
