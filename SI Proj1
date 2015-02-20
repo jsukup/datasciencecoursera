@@ -1,32 +1,107 @@
 ---
+---
 title: "Statistical Inference - Exploring the Exponential Distribution Through Simulation"
 author: "John E Sukup III"
 date: "Saturday, February 14, 2015"
 output: html_document
 ---
-
 #Summary
 
 In a few (2-3) sentences explain what is going to be reported on.
 
-#Simulations of Exponential Distribution
+#Simulations of Exponential Distribution and Comparison to Theoretical Mean
 
+Loading report packages and setting seed:
 ```{r}
-exp <- NULL
-for(i in 1:1000) exp <-  c(exp, mean(rexp(40, rate = .2)))
-
+library(ggplot2)
+library(dplyr)
+set.seed(22215)
 ```
 
-Simulations: Include English explanations of the simulations you ran, with the accompanying R code. Your explanations should make clear what the R code accomplishes.
+To begin, our goal with this research is to prove how the Central Limit Theorum (CLT) applies to data distributed different ways. In our particular case, we will show how the exponential distribution (ED) can be generalized within a simulated model utilizing 1000 simulations of where we take the summated mean of 40 exponentials per simulation (as outlined in the project requirements).
 
-#Comparison of Sample Mean vs. Theoretical Mean
+We are given the theoretical mean of the exponential distrubution as 1/lambda. For the sake of this analysis, we consider that lambda = .2 for a theoretical mean of 5. The ED is concerned with the rate of time between events occuring at a regular interval within a Poisson distribution.
 
-Sample Mean versus Theoretical Mean: Include figures with titles. In the figures, highlight the means you are comparing. Include text that explains the figures and what is shown on them, and provides appropriate numbers.
+We begin with a simple simlulation of the ED using the parameters outlined (1000 simulations, 40 exponentials/each, rate = .2). 
 
-#Comparison of Sample Variace vs. Theoretical Variance
+```{r}
+mexp1000 <- NULL
+for(i in 1:1000) mexp1000 <- c(mexp1000, mean(rexp(40, rate = .2)))
+mexp <- mean(mexp1000)
+mdelta <- abs(5 - mexp)
+```
 
-Sample Variance versus Theoretical Variance: Include figures (output from R) with titles. Highlight the variances you are comparing. Include text that explains your understanding of the differences of the variances.
+After 1000 simulations, we can see that our samples' means **(`r mexp`)** are fairly close to the theoretical mean, **5**, differing from each other by **`r mdelta`**. But this is starting out with 1000 simulations--maybe more simulations will get us closer. 
+
+#Comparing Sample vs. Theoretical Mean (Central Limit Theorum Illistrated)
+
+In order to show how the CLT applies to this distribution, we should so how progressively larger groups of samples lead to the CLT. Let's begin with a single simulation of the ED using one sample with 40 exponentials and a rate of .2.
+
+```{r}
+mexp1 <- rexp(40, rate = .2)
+hist(mexp1, main = "Exponential Distribution (1 Simulation)", col = "lightblue")
+```
+
+The ED clearly resembles the Poisson distribution with a larger left tail that eventually levels out to as our time factor increases. Clearly the distrubition is not normal/Gaussian. Let's look at how it approximates normal as we increase the simulation count. We will run simulations 10, 100, 1000 (already did this above), 10000, and 100000 times taking the mean of each simulation.
+
+```{r, cache=TRUE}
+mexp10 <- NULL
+for(i in 1:10) mexp10 <- c(mexp10, mean(rexp(40, rate = .2)))
+mexp100 <- NULL
+for(i in 1:100) mexp100 <- c(mexp100, mean(rexp(40, rate = .2)))
+mexp10000 <- NULL
+for(i in 1:10000) mexp10000 <- c(mexp10000, mean(rexp(40, rate = .2)))
+mexp100000 <- NULL
+for(i in 1:100000) mexp100000 <- c(mexp100000, mean(rexp(40, rate = .2)))
+msimsize <- rep(c(10,100,1000,10000,100000), c(10, 100, 1000, 10000,100000))
+mexps <- data.frame(mean = c(mexp10,mexp100,mexp1000,mexp10000,mexp100000), size = msimsize)
+```
+
+Let's compare how the increasing number of simulations approximates the normal/Gaussian distribution and gets us closer to the theoretical mean, **5**.
+
+```{r}
+ggplot(mexps, aes(mean, fill = as.factor(size))) + 
+    geom_density(alpha = .3) +
+    geom_vline(xintercept = 5, size = 1, linetype = "dashed") +
+    labs(x = "Means", y = "Density", title = "Increasing Simulations of Exponential Distribution", fill = "Sim. Size")
+```
+
+Our first simulation of 10 EDs begins to take the shape of the theoretical ED, but by 100000 simulaions the means are nearly identical. In fact, even our first simulation of 1000 ED means closely approximates the theoretical mean making additional simulations redundant.
+
+#Comparison of Sample Variance vs. Theoretical Variance
+
+Sample means aren't the only statistic to approximate the theoretical parameter of a distribution when CLT is implemented. We can also perform simulations to show that the variance, **s^2^**, demonstrates the same behavior. We are given the theoretical variance as **25**. Let's first run our baseline 1000 simulations.
+
+```{r}
+vexp1000 <- NULL
+for(i in 1:1000) vexp1000 <- c(vexp1000, var(rexp(40, rate = .2)))
+vexp <- mean(vexp1000)
+vdelta <- abs(25 - vexp)
+```
+
+Similar to the mean, the average variance of our 1000 ED simulations, **`r vexp`**, is approximately the same as our theoretical variance, **25**, differing by only **`r vdelta`**. As we saw previously with means, as we increase the simulation size, the closer our statistic approximates to the theoretical parameter. Rather than run the same simulations again like we did for means, we can just run another with iterations >1000 to see if our approximation becomes closer to **25**.
+
+```{r, cache=TRUE}
+vexp100000 <- NULL
+for (i in 1:100000) vexp100000 <- c(vexp100000, var(rexp(40, rate = .2)))
+vexp100k <- mean(vexp100000)
+vdelta100k <- abs(25 - vexp100k)
+```
+
+We get slightly closer to approximation with an increased number of simulations ending with an average variance after 100000 simulations of **`r vexp100k`** for a difference of **`r vdelta100k`**.
 
 #Normal Distribution via Central Limit Theorum
 
-Distribution: Via figures and text, explain how one can tell the distribution is approximately normal. 
+CLT is based on approximating an otherwise "non-normal/Gaussian" distribution into a normal/Gaussian distribution by iterative sampling and averaging. We've seen how both the theoretical mean and variance approximate to their expected values as we increase simulations and the averages obtained within them.
+
+Yet, although our simulated distributions *appear* normal/Gaussian, let's visualize it to be sure.
+
+```{r}
+ggplot(mexps) +
+    stat_qq(aes(sample=mean)) + 
+    facet_grid(. ~ size, labeller = label_both) +
+    labs(title = "Q-Q Plots of Simulations")
+```
+
+After 1000 simulated means of the ED, the Q-Q plot shows mostly normal distributions--even close to the tails.
+
