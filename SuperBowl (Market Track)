@@ -1,0 +1,157 @@
+library(dplyr) #Load required packages
+library(lubridate)
+library(ggplot2)
+
+data <- read.csv("superbowl.csv", header = TRUE) #Load raw data into R
+colnames(data) <- tolower(colnames(data)) #Make variables lowercase
+data$ad.date <- mdy(data$ad.date) #Convert "ad.date" to class = Date
+
+#Filter out electronic products by "department = Electronics" and arrange by "category.type" descending A to Z
+newdata <- data %>%
+    filter(department == "ELECTRONICS") %>%
+    arrange(category.group)
+
+newdata$category.group <- droplevels(newdata$category.group) #Drop unused factor levels
+
+#Recode "event" factor for graphing
+newdata$event[newdata$event == ""] <- NA
+newdata$event <- droplevels(newdata$event)
+newdata$event <- factor(newdata$event, levels = names(sort(table(newdata$event), decreasing = TRUE)))
+
+#Count of ads by category and type of ad
+ggplot(newdata, aes(reorder(category.group, table(category.group)[category.group]), fill = newdata$event)) + 
+    geom_bar() +
+    labs(title = "Event-Oriented Ads by Electronic Category", fill = "Event", x = "Category", y = "Count of Ads") +
+    ylim(0, 3000) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(size = 16)) +
+    scale_fill_brewer(type = "qual") +
+    guides(fill = guide_legend(reverse = TRUE)) +
+    coord_flip()
+
+#Recode "event" factor for graphing (remove "None")
+newdata$event[newdata$event == "None"] <- NA
+newdata$event <- droplevels(newdata$event)
+newdata$event <- factor(newdata$event, levels = names(sort(table(newdata$event), decreasing = TRUE)))
+
+#Count of ads by category and type of ad (removed "None" event)
+ggplot(newdata, aes(reorder(category.group, table(category.group)[category.group]), fill = newdata$event)) + 
+    geom_bar() +
+    labs(title = "Event-Oriented Ads by Electronic Category", fill = "Event", x = "Category", y = "Count of Ads") +
+    ylim(0, 500) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(size = 16)) +
+    scale_fill_brewer(type = "qual") +
+    guides(fill = guide_legend(reverse = TRUE)) +
+    coord_flip()
+
+#Divide by year 2013 and 2014
+bowl13 <- newdata[newdata$ad.date <= "2013-07-02",] 
+bowl14 <- newdata[newdata$ad.date > "2014-01-01",]
+
+#Create data.frames for Product Category sum of "event" ads by date and year
+event13 <- bowl13 %>% 
+    group_by(ad.date, category.group) %>%
+    summarise(sum = sum(event, na.rm = TRUE))
+
+event14 <- bowl14 %>% 
+    group_by(ad.date, category.group) %>%
+    summarise(sum = sum(event, na.rm = TRUE))
+       
+#Plot for 2013
+ggplot(event13, aes(ad.date, reorder(category.group, table(category.group)[category.group]), size = event13$sum)) + 
+    geom_point(aes(color = event13$sum)) +
+    scale_size_continuous(range = c(0,10)) +
+    scale_color_continuous(limits = c(0,155), low = "blue", high = "red") +    
+    labs(title = "Event-Oriented Ads by Electronic Category (2013)", color = "Count", size = "Count", x = "Date", y = "Count of Ads") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE))
+
+#Plot for 2014
+ggplot(event14, aes(ad.date, reorder(category.group, table(category.group)[category.group]), size = event14$sum)) + 
+    geom_point(aes(color = event14$sum)) +
+    scale_size_continuous(range = c(0,10)) +
+    scale_color_continuous(limits = c(0,155), low = "blue", high = "red") +    
+    labs(title = "Event-Oriented Ads by Electronic Category (2014)", color = "Count", size = "Count", x = "Date", y = "Count of Ads") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE))
+
+#Create variable for count of ads by category by day (2013)
+q <- bowl13 %>% group_by(ad.date, category.group) %>% summarise(sum = sum(category.group))
+
+#Plot of 2013 by ad count per day
+ggplot(q, aes(ad.date, reorder(category.group, table(category.group)[category.group]), size = q$sum)) + 
+    geom_point(aes(color = q$sum)) +
+    scale_size_continuous(range = c(0,12)) +
+    scale_color_continuous(limits = c(0,3150), low = "blue", high = "red") +    
+    labs(title = "Ads by Electronic Category (2013)", color = "Count", size = "Count", x = "Date", y = "Count of Ads") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE)) +
+    geom_vline(xintercept = as.numeric(ymd("2013-02-03")), color = "red", linetype = 2, size = 1)
+
+#Create variable for count of ads by category by day (2014)
+d <- bowl14 %>% group_by(ad.date, category.group) %>% summarise(sum = sum(category.group))
+
+#Plot of 2014 by ad count per day
+ggplot(d, aes(ad.date, reorder(category.group, table(category.group)[category.group]), size = d$sum)) + 
+    geom_point(aes(color = d$sum)) +
+    scale_size_continuous(range = c(0,12)) +
+    scale_color_continuous(limits = c(0,3150), low = "blue", high = "red") +    
+    labs(title = "Ads by Electronic Category (2014)", color = "Count", size = "Count", x = "Date", y = "Count of Ads") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE)) +
+    geom_vline(xintercept = as.numeric(ymd("2014-02-02")), color = "red", linetype = 2, size = 1)
+
+#Create variable for count of page positions by Digital TV by day
+tv13 <- bowl13 %>% group_by(ad.date, page.position) %>% filter(category.group == "DIGITAL TV") %>% summarise(sum = sum(page.position, na.rm = TRUE))
+
+#Plot of Digital TV ads by page position by date (2013)
+ggplot(tv13, aes(ad.date, reorder(page.position, table(page.position)[page.position]), size = tv13$sum)) + 
+    geom_point(aes(color = tv13$sum)) +
+    scale_size_continuous(range = c(1,12)) +
+    scale_color_continuous(limits = c(0,624), low = "blue", high = "red") +    
+    labs(title = "Digital TV Ads by Position  (2013)", color = "Count", size = "Count", x = "Date", y = "Count of Ads by Position") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE)) +
+    geom_vline(xintercept = as.numeric(ymd("2013-02-03")), color = "red", linetype = 2, size = 1)
+
+#Create variable for count of page positions by Digital TV by day
+tv14 <- bowl14 %>% group_by(ad.date, page.position) %>% filter(category.group == "DIGITAL TV") %>% summarise(sum = sum(page.position, na.rm = TRUE))
+
+#Plot of Digital TV ads by page position by date (2014)
+ggplot(tv14, aes(ad.date, reorder(page.position, table(page.position)[page.position]), size = tv14$sum)) + 
+    geom_point(aes(color = tv14$sum)) +
+    scale_size_continuous(range = c(1,12)) +
+    scale_color_continuous(limits = c(0,632), low = "blue", high = "red") +    
+    labs(title = "Digital TV Ads by Position  (2014)", color = "Count", size = "Count", x = "Date", y = "Count of Ads by Position") +
+    theme(plot.title = element_text(size = 16)) +
+    guides(size = guide_legend(reverse = TRUE)) +
+    geom_vline(xintercept = as.numeric(ymd("2014-02-02")), color = "red", linetype = 2, size = 1)
+
+#Create extra tables filtered my Digital Tv for summary tables
+sumtv13 <- bowl13 %>% filter(category.group == "DIGITAL TV")
+sumtv14 <- bowl14 %>% filter(category.group == "DIGITAL TV")
+
+#Summary tables by year
+adsum13 <- data.frame(table(sumtv13$advertiser)) %>%
+    arrange(desc(Freq))
+thsum13 <- data.frame(table(sumtv13$theme)) %>%
+    arrange(desc(Freq))
+pinsum13 <- data.frame(table(sumtv13$page...in.ad)) %>%
+    arrange(desc(Freq))
+catsum13 <- data.frame(table(droplevels(sumtv13$category))) %>%
+    arrange(desc(Freq))
+brsum13 <- data.frame(table(droplevels(sumtv13$brand))) %>%
+    arrange(desc(Freq))
+
+adsum14 <- data.frame(table(sumtv14$advertiser)) %>%
+    arrange(desc(Freq))
+thsum14 <- data.frame(table(sumtv14$theme)) %>%
+    arrange(desc(Freq))
+pinsum14 <- data.frame(table(sumtv14$page...in.ad)) %>%
+    arrange(desc(Freq))
+catsum14 <- data.frame(table(droplevels(sumtv14$category))) %>%
+    arrange(desc(Freq))
+brsum14 <- data.frame(table(droplevels(sumtv14$brand))) %>%
+    arrange(desc(Freq))
+
+
+
