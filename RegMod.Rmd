@@ -1,0 +1,38 @@
+---
+title: "Comparing Automatic and Manual Transmissions on MPG"
+author: "John E Sukup III"
+date: "Saturday, April 18, 2015"
+output: html_document
+---
+
+##Introduction
+Motor Trend magazine, a leading authority on automobiles, wishes to perform a study that compares fuel efficiency (measured in miles per gallon, or MPG) between automoatic and manual transmission vehicles. In particular, Motor Trend is interested in two specific questions:
+
+* Is an automatic or manual transmission better for MPG?
+* Quantify the MPG difference between automatic and manual transmissions
+
+We will answer these questions utilizing the built-in R data set "mtcars." Each question can be answered using simple regression modeling as outlined in Johns Hopkins "Regression Models" class.
+
+##Automatic vs. Manual Transmissions
+Before we being answering the first question, let's load in the data to RStudio and run some summary statistics.
+```{r}
+data <- mtcars
+str(data)
+summary(data)
+```
+All variables are numeric including our target/outcome variable, "mpg." This makes linear regression modeling the preferred method rather than an alternative such as logistic regression which assumes a bianary outcome variable (i.e. classification). Most variables are continuous but "cyl","vs","am","gear", and "carb" are discrete.
+
+Lets first fit a simple regression model using "mpg" as our target/outcome and "am" as our predictor. The variable "am" is bianary with automatic = 0 and manual = 1. The function "lm" will treat manual transmission vehicles as our reference variable in the linear model summary.
+```{r}
+fit <- lm(mpg ~ am, data = data)
+summary(fit)
+```
+In the absence of taking transmission into consideration, the vehicles in "mtcars" have a mean **~17.15 MPG** (based on the Intercept coefficient). When transmission *is* taken into account, a manual transmission appears to **increase** a vehicles' MPG by **~7.25** (we know this due to the Intercept variable being based off the reference of "automatic transmission" being equal to zero). We can see this more clearly if we simply remove the Intercept coefficient and view the model's slope coefficient alone.
+```{r}
+fit2 <- lm(mpg ~ am - 1, data= data)
+summary(fit2)
+```
+This shows our expected slope of **24.39 MPG** for manual transmissions. It should be noted that "am" is considered significant to the linear model with p<.001.
+
+However, trying to determine the difference in "mpg" by "am" alone leaves out several other variables in the data set that may impact "mpg." Let's take a look at a few other models.
+
