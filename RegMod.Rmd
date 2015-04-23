@@ -5,34 +5,113 @@ date: "Saturday, April 18, 2015"
 output: html_document
 ---
 
-##Introduction
-Motor Trend magazine, a leading authority on automobiles, wishes to perform a study that compares fuel efficiency (measured in miles per gallon, or MPG) between automoatic and manual transmission vehicles. In particular, Motor Trend is interested in two specific questions:
+#Executive Summary
+Motor Trend magazine, a leading authority on automobiles, wishes to perform a study that compares fuel efficiency (measured in miles per gallon, or MPG) between automatic and manual transmission vehicles. In particular, Motor Trend is interested in two specific questions:
 
 * Is an automatic or manual transmission better for MPG?
-* Quantify the MPG difference between automatic and manual transmissions
+    + Conclusion:**Manual transmissions improve MPG**
+* Quantify the MPG difference between automatic and manual transmissions.
+    + Conclusion:**All other predictors held constant, manual transmissions improve MPG by approximately 2.9358**
 
-We will answer these questions utilizing the built-in R data set "mtcars." Each question can be answered using simple regression modeling as outlined in Johns Hopkins "Regression Models" class.
+Using data in "mtcars," we initially ran a linear regression using just "mpg" (outcome) and "am" (predictor). The model did not fit well in terms of $R^2$ plus we wanted to make sure that none of the other predictors improved the model performance. Next, we ran a multiple regression model inclusive of all predictors. This showed none of our predictors as significantly contributing to the model (suggesting correlation between predictors) and also had a smaller F statistic than our single predictor model. We finally ran a model selection procedure that looked at at all stepwise models (forward/backward) to select a three predictor model (weight, 1/4 mile time, transmission type) based on Cp and BIC. Finally, our residual plot and Q-Q plot indicate the residuals are not normally distributed
 
-##Automatic vs. Manual Transmissions
+#Automatic vs. Manual Transmissions
 Before we being answering the first question, let's load in the data to RStudio and run some summary statistics.
+
 ```{r}
 data <- mtcars
-str(data)
 summary(data)
 ```
-All variables are numeric including our target/outcome variable, "mpg." This makes linear regression modeling the preferred method rather than an alternative such as logistic regression which assumes a bianary outcome variable (i.e. classification). Most variables are continuous but "cyl","vs","am","gear", and "carb" are discrete.
 
-Lets first fit a simple regression model using "mpg" as our target/outcome and "am" as our predictor. The variable "am" is bianary with automatic = 0 and manual = 1. The function "lm" will treat manual transmission vehicles as our reference variable in the linear model summary.
+All variables are numeric including our target/outcome variable, "mpg." This makes linear regression modeling the preferred method rather than an alternative such as logistic regression which assumes a binary outcome variable (i.e. classification). Most variables are continuous but "cyl","vs","am","gear", and "carb" are discrete.
+
+Before running regression analysis, we can visually inspect the relationship between "am" and "mpg."
+
+A simple box plot alone shows that manual transmission vehicles ("1") have a higher median MPG than automatics ("0") although they also show a greater variability (see Appendix: Figure 1).
+
+###Simple Regression Model
+Lets first fit a simple regression model using "mpg" as our target/outcome and "am" as our predictor. The variable "am" is binary with automatic = 0 and manual = 1. The function "lm" will treat manual transmission vehicles as our reference variable in the linear model summary.
+
 ```{r}
 fit <- lm(mpg ~ am, data = data)
-summary(fit)
 ```
-In the absence of taking transmission into consideration, the vehicles in "mtcars" have a mean **~17.15 MPG** (based on the Intercept coefficient). When transmission *is* taken into account, a manual transmission appears to **increase** a vehicles' MPG by **~7.25** (we know this due to the Intercept variable being based off the reference of "automatic transmission" being equal to zero). We can see this more clearly if we simply remove the Intercept coefficient and view the model's slope coefficient alone.
-```{r}
-fit2 <- lm(mpg ~ am - 1, data= data)
-summary(fit2)
-```
-This shows our expected slope of **24.39 MPG** for manual transmissions. It should be noted that "am" is considered significant to the linear model with p<.001.
 
-However, trying to determine the difference in "mpg" by "am" alone leaves out several other variables in the data set that may impact "mpg." Let's take a look at a few other models.
+In the absence of taking transmission into consideration, the vehicles in "mtcars" have a mean **`r summary(fit)$coef[1]`** (based on the Intercept coefficient). When transmission *is* taken into account, a manual transmission appears to **increase** a vehicles' MPG by **`r summary(fit)$coef[2]`** (we know this due to the Intercept variable being based off the reference of "automatic transmission" being equal to zero). We can see this more clearly if we simply remove the Intercept coefficient and view the model's slope coefficient alone.
+
+```{r}
+fit2 <- lm(mpg ~ am - 1, data = data)
+```
+
+This shows our expected slope of **`r summary(fit2)$coef[1]`** for manual transmissions. 
+
+However, trying to determine the difference in "mpg" by "am" alone leaves out several other variables in the data set that may impact "mpg." Let's take a look at a few other models. 
+
+###Multiple Regression Model
+We can see by looking at our Adjusted $R^2$ values that the "mpg ~ am" model does not really do a great job of explaining the variation. Let's try building a model that utilizes all other variables in the "mtcars" data set to predict "mpg."
+
+```{r}
+fitall <- lm(mpg ~ ., data = data)
+summary(fitall)
+```
+
+This model shows that none of predictors are contributing significantly to the model (p<.05) but we can at least find some level of face validity in the results: our model shows a negative relationship between "mpg" and number of cylinders ("cyl"), horsepower ("hp"), weight ("wt"), and number of carburetors ("carb") which we'd expect. Our Adjusted $R^2$ is strong, but we must also consider that this model contains all predictors which will naturally raise this value. Our F statistic is also smaller for the model with all predictors compared to the one with transmission type alone. Finally, considering that none of the variables are shown to contribute significantly on their own, there is the chance that some are strongly correlated with one another. We can plot the correlations and see if any variables might be dropped (see Appendix: Figure 2).
+
+Clearly, there are several variables strongly correlated with one another which is not ideal to building a solid linear model. 
+
+###Model Selection
+Ideally, we'd like to pare down the number of predictors to only include those that aren't highly correlated with each other and create the best model fit. To do so we will utilize the "leaps" package for linear model selection using all-subsets regression. Since the "mtcars" data contains a small number of predictor variables (10) it is easy to validate all possible models against each other. Let's compare all possible models for the best one.
+
+There are several different statistics given in this object that can be used to determine the optimal linear model. We will plot Mallow's Cp, BIC, and Adjusted $R^2$ and compare the outputs. Both Cp and BIC and similar in that they penalize models for increasing the number of predictors. We seek the model with the minimum value for these. Adjusted $R^2$ is similar to $R^2$ but it also adds a penalty for each predictor added to the model (see Appendix: Figure 3).
+
+##Conclusion
+Both our Cp and BIC values, when minimal, contain 3 predictors: weight, 1/4 mile time, and transmission type. Out Adjusted $R^2$ model contains 5 predictors when maximal: displacement, horsepower, weight, 1/4 mile time, and transmission type. Favoring the less complex model, we'll choose the 3 predictor model which gives us the following linear model:
+
+```{r}
+bestfit <- lm(mpg ~ wt + qsec + am, data = data)
+```
+
+To check our final model we also run a residual plot to determine if our residuals are normally distributed (see Appendix: Figure 4). Both the residual plot and Q-Q plot indicate the residuals are not normal which adds further validity to our model.
+
+Circling back to our original questions then:
+
+* Is an automatic or manual transmission better for MPG?
+    + **Manual transmissions improve MPG**
+* Quantify the MPG difference between automatic and manual transmissions.
+    + **All other predictors held constant, manual transmissions improve MPG by `r summary(bestfit)$coef[4]`**
+
+##Appendix
+
+Figure 1:
+```{r}
+library(ggplot2)
+ggplot(data, aes(x = factor(am, labels = c("Automatic", "Manual")), y = mpg, fill = factor(am, labels = c("Automatic", "Manual")))) +
+    geom_boxplot() +
+    labs(title = "Comparison of Manual vs. Automatic Transmission on MPG", x = "Transmission Type", y = "MPG", fill = "Trans Type")
+```
+
+Figure 2:
+```{r}
+library(corrplot)
+cor <- cor(data)
+corrplot(cor, method = "ellipse", order = "AOE", type = "lower")
+```
+
+Figure 3:
+```{r, fig.width=12, fig.height=6}
+library(leaps)
+best <- regsubsets(mpg ~ ., data = data, nvmax = 10)
+par(mfrow = c(1,3))
+plot(best, scale = "Cp")
+plot(best, scale = "bic")
+plot(best, scale = "adjr2")
+```
+
+Figure 4:
+```{r, fig.width=12, fig.height=6}
+par(mfrow = c(1,2))
+plot(bestfit$residuals)
+abline(0,0)
+qqnorm(bestfit$residuals)
+qqline(bestfit$residuals)
+```
 
