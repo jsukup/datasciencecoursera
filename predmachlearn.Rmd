@@ -1,0 +1,96 @@
+---
+title: "Predicting Quality of Exercise with Accelerometer Data"
+author: "John E Sukup III"
+date: "Monday, May 18, 2015"
+output: html_document
+---
+
+#Executive Summary
+We are tasked with predicting weight lifting behavior based on data collected through 4 different body sensors. The initial data sets are reduced to remove nearly empty variables that will not aid us in our model. The remaining variables are initially modeled using a CART algorithm but accuracy results are not much better than guessing.Using this model's output, we refine our predictors to only include those with the highest importance to predictive accuracy. Switching to a boosted tree method, which allows for several iterations tree building and cross-validation, provides a better model with predictive accuracy of approximately 9 in 10. Our submitted predictions reflect this with an error of only .1.
+
+##Data Preperation
+```{r}
+library(dplyr)
+library(caret)
+library(ggplot2)
+setwd("C:/Users/John E Sukup III/Downloads")
+set.seed(734)
+```
+
+A review of the provided data shows that several variables within the data sets are mostly empty. With many containing ~19,000 missing variables/NAs, the prospect of imputation becomes nearly impossible. Therefore, we will create a cleaner data set by removing both these variables as well as variables used to describe the study subjects (i.e. "user_name", "raw_time_stamp_part_1", etc.) since these probably do not add predictive value. We are left with 53 variables in the "train" data set and 52 in the "test" data set ("test" excludes the "classe" outcome variable). 
+
+```{r, echo=FALSE}
+train <- read.csv("pml-training.csv", header = TRUE, stringsAsFactors = FALSE)
+test <- read.csv("pml-testing.csv", header = TRUE, stringsAsFactors = FALSE)
+
+train <- select(train, c(classe, roll_belt, pitch_belt, yaw_belt, total_accel_belt, gyros_belt_x, gyros_belt_y, gyros_belt_z, accel_belt_x, accel_belt_y, accel_belt_z, magnet_belt_x, magnet_belt_y, magnet_belt_z, roll_arm, pitch_arm, yaw_arm, total_accel_arm, gyros_arm_x, gyros_arm_y, gyros_arm_z, accel_arm_x, accel_arm_y, accel_arm_z, magnet_arm_x, magnet_arm_y, magnet_arm_z, roll_dumbbell, pitch_dumbbell, yaw_dumbbell, total_accel_dumbbell, gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z, accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z, magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z, roll_forearm, pitch_forearm, yaw_forearm, total_accel_forearm, gyros_forearm_x, gyros_forearm_y, gyros_forearm_z, accel_forearm_x, accel_forearm_y, accel_forearm_z, magnet_forearm_x, magnet_forearm_y, magnet_forearm_z))
+
+test <- select(test, c(roll_belt, pitch_belt, yaw_belt, total_accel_belt, gyros_belt_x, gyros_belt_y, gyros_belt_z, accel_belt_x, accel_belt_y, accel_belt_z, magnet_belt_x, magnet_belt_y, magnet_belt_z, roll_arm, pitch_arm, yaw_arm, total_accel_arm, gyros_arm_x, gyros_arm_y, gyros_arm_z, accel_arm_x, accel_arm_y, accel_arm_z, magnet_arm_x, magnet_arm_y, magnet_arm_z, roll_dumbbell, pitch_dumbbell, yaw_dumbbell, total_accel_dumbbell, gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z, accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z, magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z, roll_forearm, pitch_forearm, yaw_forearm, total_accel_forearm, gyros_forearm_x, gyros_forearm_y, gyros_forearm_z, accel_forearm_x, accel_forearm_y, accel_forearm_z, magnet_forearm_x, magnet_forearm_y, magnet_forearm_z))
+```
+
+##CART Model
+Fit a CART model to predict variable "classe" using 10-fold CV (repeated 3 times). Predictor variables have been scaled/centered to remove measurement bias.
+
+```{r, cache=TRUE}
+train$classe <- factor(train$classe)
+tune_tree <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+fit_tree <- train(classe ~ ., 
+                  data = train, 
+                  method = "rpart", 
+                  preProcess = c("center","scale"), 
+                  trControl = tune_tree)
+fit_tree
+```
+
+This model is not much better than guessing using the current experimental settings (accuracy = **.51**) and running more iterations of the CART model will probably not elicit better results. One benefit of the model output is the variable importance. We can reiterate the model using only these variables to see if there is any improvement.
+
+```{r,cache=TRUE}
+importance <- c(names(fit_tree$finalModel$variable.importance), "classe")
+train_imp_vars <- select(train, one_of(importance))
+fit_tree_imp <- train(classe ~.,
+                      data = train_imp_vars,
+                      method = "rpart",
+                      preProcess = c("center","scale"),
+                      trControl = tune_tree)
+fit_tree_imp
+```
+
+There isn't any improvement using this method (accuracy = **.50**).We should move on to try somewhat more powerful methods.
+
+##Boosted Tree Model
+Since our outcome variable has 5 potential classes, we are limited to the methods we can employ for classification. Tree methods are fairly appropriate for this type of classification so we will try to continue using methods similar to our (unsuccessful) CART models.
+
+We'll run a boosted tree model using similar tuning parameters as with CART. For the sake of processing time, let's stick with using our important variables identified in the previous model.
+
+```{r, cache=TRUE}
+tune_gbm <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+fit_gbm <- train(classe ~ ., 
+                 data = train_imp_vars,
+                 method = "gbm",
+                 preProcess = c("center","scale"),
+                 verbose = FALSE,
+                 trControl = tune_gbm)
+pred <- as.character(predict(fit_gbm, test))#Create output of predictions for test submission
+fit_gbm
+```
+
+There is substantial improvement using this model (accuracy = **.92**). Although it is computationally extensive (and time consuming to run), we end up with a highly accurate model that only utilizes 19 predictors rather than 52. Accuracy is improved as tree depth increases from 1 to 2, but little between 2 and 3. Boosting iterations also plateau on accuracy improvement after 100 iterations.
+
+```{r}
+ggplot(fit_gbm) + labs(title = "Accuracy Improvement by Iteration")
+```
+
+The accuracy of this model may already be sufficient enough to predict the test set well. Over fitting is not as much of a concern here since the cross-validation step is supposed to aid in this regard. We'll use the provided syntax to create submission files.
+
+```{r, eval=FALSE}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(pred)
+```
+
+So, our estimated out-of-sample error is just **1 - .92** or **.08**. Our submission of the test predictions only elicited 2 misclassifications out of 20 for an error rate of **.1** which is fairly close to our estimate and a satisfactory amount of error.
