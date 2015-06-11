@@ -32,3 +32,7 @@ chidat <- filter(data,
                  longitude != "")# Filter data frame for Chicago restaurants only with non-blank risk classification and remove rows with NAs
 chidat$risk <- droplevels(chidat$risk)# Clean out unused levels
 
+zips <- chidat %>% 
+        group_by(as.character(zip)) %>%
+        summarise(mean(as.numeric(risk)))
+names(zips) <- c("region","value")
